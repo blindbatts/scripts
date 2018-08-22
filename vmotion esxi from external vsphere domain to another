@@ -1,0 +1,29 @@
+Import-Module VMware.PowerCLI
+   
+#Variables
+$sourceVC = 'source-vcenter.sourceESXI.com'
+$sourceVCUsername = 'administrator@vsphere.local'
+$sourceVCPassword= 'Hunter2'
+   
+$destVC = 'dest-vcenter.destESXI.com'
+$destVCUsername = 'administrator@vsphere.local'
+$destVCPassword= 'Hunter2'
+$destESXi = 'destVHOST.destESXI.com'
+   
+$vmname = 'vmName01'
+$Switchname = 'destination vswitch0'
+$NetworkName = 'destination VLAN'
+$datastorename = 'destination-storageName'
+   
+# Connect to the vCenter Servers
+$sourceVCConn = Connect-VIServer -Server $sourceVC -user $sourceVCUsername -password $sourceVCPassword
+$destVCConn = Connect-VIServer -Server $destVC -user $destVCUsername -password $destVCPassword
+   
+$vm = Get-VM $vmname -Server $sourceVCConn
+$networkAdapter = Get-NetworkAdapter -VM $vm -Server $sourceVCConn
+   
+$destination = Get-VMHost -name $destESXi -Server $destVCConn
+$destinationPortGroup = Get-VirtualPortGroup -VirtualSwitch $Switchname -name $NetworkName -VMHost $destination
+$destinationDatastore = Get-Datastore -name $datastorename -Server $destVCConn
+   
+Move-VM -VM $vm -Destination $destination -NetworkAdapter $networkAdapter -PortGroup $destinationPortGroup -Datastore $destinationDatastore
