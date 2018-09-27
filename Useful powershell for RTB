@@ -1,0 +1,73 @@
+
+#######################################################################
+
+# Kevin Tansey
+
+#######################################################################
+
+" Windows 10 "
+
+# List all apps for all users
+# ouput to screen or change to out-file c:\applist.txt
+$Packages=(get-appxpackage -allusers).name | out-gridview
+
+# Remove Pre-Installed Apps on Windows 10
+# -Whatif command tells you what would happen if you run the command
+# Lists output of apps that will be removed
+# Remove -whatif to execute line and remove packages
+Get-AppxPackage -allusers | Remove-AppxPackage -whatif
+
+
+# Re-Install all appx packages
+# You may get some errors, this is normal
+Get-AppxPackage -AllUsers| Foreach {Add-AppxPackage -DisableDevelopmentMode -Register “$($_.InstallLocation)\AppXManifest.xml”}
+
+
+#######################################################################
+
+
+" Search event log and write specific event id to output file "
+# Change event log to Any Windows Log: Security, Application, System etc...
+# Change Event ID to the ID you want to search within the selected log
+# Change out-file to desired location
+
+Get-EventLog "Security" | Where-Object {$_.EventID -eq 4740} | Format-List | out-file C:\Acct_Lock_out.txt
+
+#######################################################################
+
+
+" Backup your GPO objects with a powershell command "
+
+# Backup GPO's to desired path
+Backup-GPO –all –path c:\GPO_Backups 
+
+
+#######################################################################
+
+" Accounts in Domain with Password set to never expire "
+
+#Searhes AD for accounts with password set to not expire
+Search-ADAccount -PasswordNeverExpires | Select-Object Name, Enabled | convertto-html > c:\pwdneverexpire.html 
+
+#######################################################################
+
+" List out all computers that have not contacted the domain in last 30 days "
+# Change 30 to desired number of days
+# Exports to csv file
+get-adcomputer -Filter { OperatingSystem -notlike “Windows Server*” } -Properties PasswordLastSet | Where-Object { (((Get-Date) – $_.PasswordLastSet).Days) -gt 30} |  select-object Name, @{Name=”Age”;Expression={ (((Get-Date) – $_.PasswordLastSet).Days) }} | Export-CSV C:\ComputerListByAge.csv
+
+# Find Inactive Computers and Output to screen
+$DaysInactive = 90; $time = (Get-Date).Adddays(-($DaysInactive)); Get-ADUser -Filter {LastLogonTimeStamp -lt $time} -Properties LastLogonTimeStamp | Select-Object Name | Sort-Object Name | Out-Default 
+
+
+" Find all Users that have been inactive for last 90 days, Disable account and output disabled account list to file "
+
+# Change 90 to desired number of days
+# Export each user to line in txt file
+search-adaccount -UsersOnly -AccountInactive -TimeSpan "90" | foreach {disable-adaccount $_; add-content c:\Users_disabled.txt $_.samaccountname}
+
+# Find all Inactive Users and output to screen
+$DaysInactive = 90; $time = (Get-Date).Adddays(-($DaysInactive)); Get-ADUser -Filter {LastLogonTimeStamp -lt $time} -Properties LastLogonTimeStamp | Select-Object Name | Sort-Object Name | Out-Default 
+
+" Find Disable User Accounts "
+Get-ADUser -Filter {Enabled -eq $false} | FT samAccountName, GivenName, Surname
